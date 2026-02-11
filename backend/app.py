@@ -6,7 +6,7 @@ from google import genai
 app = Flask(__name__)
 
 # Note: give your API
-API_KEY = "AIzaSyCyM2nsJiBl8KDjlhZgCybyvb_mBnpivPg"
+API_KEY = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 client = genai.Client(api_key=API_KEY)
 
 # -- SYLLABUS ---
