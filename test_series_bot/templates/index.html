@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Student Test Series</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background-color: #f4f4f9; color: #333; max-width: 800px; margin: 0 auto; padding: 20px; }
+        .container { background: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        h1 { text-align: center; color: #2c3e50; }
+        label { font-weight: bold; display: block; margin-top: 15px; }
+        select, input, button { width: 100%; padding: 10px; margin-top: 5px; border-radius: 5px; border: 1px solid #ddd; }
+        button { background-color: #3498db; color: white; border: none; cursor: pointer; font-size: 16px; margin-top: 20px; font-weight: bold; }
+        button:hover { background-color: #2980b9; }
+        
+        #quiz-section, #result-section { display: none; margin-top: 30px; border-top: 2px solid #eee; padding-top: 20px; }
+        .question-box { background: #f9f9f9; padding: 15px; border-radius: 5px; margin-bottom: 15px; border-left: 4px solid #3498db; }
+        .options label { display: block; font-weight: normal; margin-top: 5px; cursor: pointer; }
+        
+        #ai-analysis { background: #e8f6f3; padding: 20px; border-radius: 5px; white-space: pre-wrap; line-height: 1.6; }
+        .loading { text-align: center; display: none; color: #7f8c8d; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>📚 AI Test Series Bot</h1>
+    <p style="text-align: center;">Select your curriculum to generate a custom test.</p>
+
+    <div id="selection-form">
+        <label>Class (CBSE)</label>
+        <select id="class_val">
+            <option value="9th">Class 9</option>
+            <option value="10th">Class 10</option>
+            <option value="11th">Class 11</option>
+            <option value="12th">Class 12</option>
+        </select>
+
+        <label>Subject</label>
+        <select id="subject">
+            <option value="Mathematics">Mathematics</option>
+            <option value="Physics">Physics</option>
+            <option value="Chemistry">Chemistry</option>
+            <option value="Computer Science">Computer Science</option>
+            <option value="English">English</option>
+        </select>
+
+        <label>Chapters (e.g., "Integration", "Chapter 1 to 3")</label>
+        <input type="text" id="chapter" placeholder="Enter chapter name or number">
+
+        <button onclick="generateQuiz()">Generate Test</button>
+    </div>
+
+    <div id="loading" class="loading">
+        <h3>🤖 AI is preparing your paper... please wait...</h3>
+    </div>
+
+    <div id="quiz-section">
+        <h2>📝 Your Test</h2>
+        <form id="quiz-form">
+            <div id="questions-container"></div>
+        </form>
+        <button onclick="submitQuiz()">Submit Answers</button>
+    </div>
+
+    <div id="result-section">
+        <h2>📊 Teacher's Analysis</h2>
+        <div id="ai-analysis"></div>
+        <button onclick="location.reload()">Take Another Test</button>
+    </div>
+</div>
+
+<script>
+    let currentQuizData = [];
+
+    async function generateQuiz() {
+        const cls = document.getElementById('class_val').value;
+        const sub = document.getElementById('subject').value;
+        const chap = document.getElementById('chapter').value;
+
+        if(!chap) { alert("Please enter a chapter!"); return; }
+
+        document.getElementById('loading').style.display = 'block';
+        document.getElementById('selection-form').style.display = 'none';
+
+        try {
+            const response = await fetch('/generate_quiz', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ class_val: cls, subject: sub, chapter: chap })
+            });
+
+            currentQuizData = await response.json();
+            renderQuiz(currentQuizData);
+            
+        } catch (error) {
+            alert("Error generating quiz. Please try again.");
+            console.error(error);
+            location.reload();
+        } finally {
+            document.getElementById('loading').style.display = 'none';
+        }
+    }
+
+    function renderQuiz(questions) {
+        const container = document.getElementById('questions-container');
+        container.innerHTML = '';
+        
+        questions.forEach((q, index) => {
+            let html = `
+                <div class="question-box">
+                    <p><strong>Q${index + 1}: ${q.question}</strong></p>
+                    <div class="options">
+                        ${q.options.map(opt => `
+                            <label>
+                                <input type="radio" name="q${index}" value="${opt}"> ${opt}
+                            </label>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+            container.innerHTML += html;
+        });
+
+        document.getElementById('quiz-section').style.display = 'block';
+    }
+
+    async function submitQuiz() {
+        const userAnswers = [];
+        let performanceData = [];
+
+        currentQuizData.forEach((q, index) => {
+            const selected = document.querySelector(`input[name="q${index}"]:checked`);
+            const answer = selected ? selected.value : "Not Answered";
+            
+            performanceData.push({
+                question: q.question,
+                correct_answer: q.correct_answer,
+                user_answer: answer,
+                is_correct: answer === q.correct_answer
+            });
+        });
+
+        document.getElementById('quiz-section').style.display = 'none';
+        document.getElementById('loading').innerHTML = "<h3>👨‍🏫 Checking your answers...</h3>";
+        document.getElementById('loading').style.display = 'block';
+
+        const response = await fetch('/evaluate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ performance: performanceData })
+        });
+
+        const result = await response.json();
+        
+        document.getElementById('loading').style.display = 'none';
+        document.getElementById('result-section').style.display = 'block';
+        document.getElementById('ai-analysis').innerText = result.analysis;
+    }
+</script>
+
+</body>
+</html>

@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My First AI Project - Exam Bot</title>
+    
+    <style>
+        /* --- CSS Section: Making the page look good --- */
+
+        body { 
+            font-family: Arial, Helvetica, sans-serif; 
+            background-color: #f0f2f5; 
+            margin: 0; 
+            display: flex; 
+            justify-content: center; /* Centers the app horizontally */
+            height: 100vh; 
+        }
+
+        /* The main box that contains the whole app */
+        .container { 
+            width: 100%; 
+            max-width: 500px; 
+            background-color: white; 
+            display: flex; 
+            flex-direction: column; 
+            border: 1px solid #ccc; /* Basic border */
+            box-shadow: 0px 5px 10px rgba(0,0,0,0.1); 
+        }
+
+        /* Header styling with a dark blue color */
+        header { 
+            background-color: #0d2ba1; 
+            color: white; 
+            padding: 20px; 
+            text-align: center; 
+            font-size: 20px; 
+            font-weight: bold;
+        }
+
+        /* This is where the messages will be shown */
+        #chat-window { 
+            flex: 1; 
+            overflow-y: auto; /* Adds scrollbar when chat is full */
+            padding: 15px; 
+            display: flex; 
+            flex-direction: column; 
+            gap: 10px; 
+        }
+
+        /* Common style for all message bubbles */
+        .msg { 
+            padding: 10px 15px; 
+            border-radius: 10px; 
+            max-width: 80%; 
+            font-size: 14px; 
+        }
+
+        /* Style for the Bot's messages (Left side) */
+        .bot-msg { 
+            background-color: #e9ecef; 
+            color: #333; 
+            align-self: flex-start; 
+        }
+
+        /* Style for the User's messages (Right side) */
+        .user-msg { 
+            background-color: #0d2ba1; 
+            color: white; 
+            align-self: flex-end; 
+        }
+
+        /* Area for buttons at the bottom */
+        #button-area { 
+            padding: 15px; 
+            border-top: 1px solid #ddd; 
+            display: flex; 
+            flex-wrap: wrap; 
+            gap: 10px; 
+            justify-content: center; 
+        }
+
+        /* Styling for the choice buttons */
+        .option-btn { 
+            padding: 10px 15px; 
+            border: 2px solid #0d2ba1; 
+            background-color: white; 
+            color: #0d2ba1; 
+            border-radius: 5px; 
+            cursor: pointer; 
+            font-weight: bold;
+        }
+
+        /* Hover effect to make buttons interactive */
+        .option-btn:hover { 
+            background-color: #0d2ba1; 
+            color: white; 
+        }
+
+        /* Quiz question card design */
+        .question-card { 
+            background-color: #ffffff; 
+            border: 1px solid #ddd; 
+            padding: 12px; 
+            border-radius: 5px; 
+            margin-top: 5px; 
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>🎓 My Study AI Partner</header>
+    
+    <div id="chat-window">
+        <div class="msg bot-msg">
+            Hello! Welcome to my AI project. <br>
+            Please select your <b>Class</b> to start:
+        </div>
+    </div>
+    
+    <div id="button-area">
+        </div>
+</div>
+
+<script>
+    /* --- JavaScript Section: Making the app work --- */
+
+    // This gets data from the server (Flask/Python)
+    const syllabusData = {{ syllabus | tojson }};
+    
+    // Selecting elements from the page
+    const chatDisplay = document.getElementById('chat-window');
+    const buttonPanel = document.getElementById('button-area');
+
+    // To keep track of what the user selects
+    let selection = { 
+        class: "", 
+        subject: "", 
+        chapter: "" 
+    };
+    
+    let questionsList = [];
+    let questionIndex = 0;
+    let score = 0;
+    let youtubeSearch = ""; 
+
+    // Function to add a new message to the screen
+    function addChat(text, sender) {
+        const div = document.createElement('div');
+        div.className = `msg ${sender === 'bot' ? 'bot-msg' : 'user-msg'}`;
+        div.innerHTML = text;
+        
+        chatDisplay.appendChild(div);
+        chatDisplay.scrollTop = chatDisplay.scrollHeight; // Automatically scroll down
+    }
+
+    // Function to create buttons for Class, Subject, and Chapter
+    function createButtons(items, step) {
+        buttonPanel.innerHTML = ""; // Clear old buttons
+        
+        items.forEach(item => {
+            const btn = document.createElement('button');
+            btn.className = 'option-btn';
+            btn.innerText = item;
+            
+            btn.onclick = () => {
+                addChat(item, 'user'); // Show what the user clicked
+                
+                if(step === 'class') {
+                    selection.class = item;
+                    addChat("Great! Now choose a <b>Subject</b>:", 'bot');
+                    createButtons(Object.keys(syllabusData[item]), 'subject');
+                
+                } else if(step === 'subject') {
+                    selection.subject = item;
+                    addChat("Choose a <b>Chapter</b> to start the test:", 'bot');
+                    createButtons(syllabusData[selection.class][item], 'chapter');
+                
+                } else if(step === 'chapter') {
+                    selection.chapter = item;
+                    startQuiz();
+                }
+            };
+            buttonPanel.appendChild(btn);
+        });
+    }
+
+    // Function to fetch questions from the server
+    async function startQuiz() {
+        buttonPanel.innerHTML = "<i>Generating questions, please wait...</i>";
+        addChat("Fetching the most important questions for your exam...", 'bot');
+
+        try {
+            const response = await fetch('/generate_test', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(selection)
+            });
+
+            const data = await response.json();
+            
+            if(data.questions) {
+                questionsList = data.questions;
+                youtubeSearch = data.query;
+                questionIndex = 0;
+                score = 0;
+                showQuestion();
+            } else {
+                addChat("Error: No questions found.", 'bot');
+            }
+
+        } catch (error) {
+            console.log("Error fetching data:", error);
+            addChat("Check your internet connection and try again.", 'bot');
+        }
+    }
+
+    // Function to show one question at a time
+    function showQuestion() {
+        if(questionIndex >= questionsList.length) {
+            showFinalResult();
+            return;
+        }
+
+        const currentQ = questionsList[questionIndex];
+        
+        // Show the question in a card
+        const qHtml = `
+            <div class="question-card">
+                <b>Question ${questionIndex + 1}:</b> ${currentQ.q}
+            </div>
+        `;
+        addChat(qHtml, 'bot');
+
+        // Show options as buttons
+        buttonPanel.innerHTML = "";
+        currentQ.options.forEach(option => {
+            const btn = document.createElement('button');
+            btn.className = 'option-btn';
+            btn.innerText = option;
+            
+            btn.onclick = () => {
+                if(option === currentQ.ans) {
+                    score++;
+                    addChat("Correct! ✅", 'bot');
+                } else {
+                    addChat("Wrong! ❌ The correct answer was: " + currentQ.ans, 'bot');
+                }
+                
+                questionIndex++;
+                // Wait for 1 second before showing next question
+                setTimeout(showQuestion, 1000);
+            };
+            
+            buttonPanel.appendChild(btn);
+        });
+    }
+
+    // Final result function
+    function showFinalResult() {
+        const resultText = `
+            <h3>Quiz Finished!</h3>
+            Your Score: ${score} / ${questionsList.length} <br><br>
+            <a href="https://www.youtube.com/results?search_query=${encodeURIComponent(youtubeSearch)}" 
+               target="_blank" style="color: blue;">
+               Click here to watch a revision video on YouTube
+            </a>
+        `;
+        
+        addChat(resultText, 'bot');
+        
+        // Reset button to start over
+        buttonPanel.innerHTML = `<button class="option-btn" onclick="location.reload()">Restart App</button>`;
+    }
+
+    // Initial call to show Class buttons
+    createButtons(Object.keys(syllabusData), 'class');
+
+</script>
+
+</body>
+</html>
