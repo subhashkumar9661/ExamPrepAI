@@ -1,13 +1,26 @@
 import os
 import json
 from flask import Flask, render_template, request, jsonify
+from dotenv import load_dotenv
 from google import genai
 
 app = Flask(__name__)
 
-# Note: give your API
-API_KEY = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+# ✅ Force correct path to .env
+env_path = os.path.join(os.path.dirname(__file__), ".env")
+load_dotenv(dotenv_path=env_path)
+
+print("ENV FILE PATH:", env_path)
+
+API_KEY = os.getenv("API_KEY")
+print("Loaded KEY:", repr(API_KEY))
+
+if not API_KEY:
+    raise ValueError("❌ API_KEY not found. Check your .env file")
+
 client = genai.Client(api_key=API_KEY)
+
+print("✅ API Key Loaded Successfully")
 
 # -- SYLLABUS ---
 SYLLABUS_DB = {
