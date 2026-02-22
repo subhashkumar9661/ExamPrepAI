@@ -83,7 +83,7 @@ def generate_questions():
     try:
         prompt = f"""
         Role: Academic Examiner for {req['class']} (CBSE Board).
-        Task: Create 10 MCQs for Subject: '{req['subject']}', Chapter: '{req['chapter']}'.
+        Task: Create 20 MCQs for Subject: '{req['subject']}', Chapter: '{req['chapter']}'.
         
         Requirements:
         1. Questions must be conceptual and based on last 10 years patterns.
