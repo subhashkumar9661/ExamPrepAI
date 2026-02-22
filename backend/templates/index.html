@@ -259,20 +259,47 @@
 
     // Final result function
     function showFinalResult() {
-        const resultText = `
-            <h3>Quiz Finished!</h3>
-            Your Score: ${score} / ${questionsList.length} <br><br>
+
+    let message = "";
+    let ytLink = "";
+
+    if(score <= 15){
+        message = "⚠️ <b>You need revision!</b>";
+        ytLink = `
+            <br><br>
             <a href="https://www.youtube.com/results?search_query=${encodeURIComponent(youtubeSearch)}" 
                target="_blank" style="color: blue;">
-               Click here to watch a revision video on YouTube
+               📺 Watch Revision on YouTube
             </a>
         `;
-        
-        addChat(resultText, 'bot');
-        
-        // Reset button to start over
-        buttonPanel.innerHTML = `<button class="option-btn" onclick="location.reload()">Restart App</button>`;
     }
+    else if(score <= 20){
+        message = "👍 <b>Good!</b> But you still need revision.";
+         ytLink = `
+            <br><br>
+            <a href="https://www.youtube.com/results?search_query=${encodeURIComponent(youtubeSearch)}" 
+               target="_blank" style="color: blue;">
+               📺 Watch Revision on YouTube
+            </a>
+        `;
+    }
+    else {
+        message = "🌟 <b>Excellent!</b> Best of luck for your exams 🤞";
+    }
+
+    const resultText = `
+        <h3>Quiz Finished!</h3>
+        Your Score: ${score} / ${questionsList.length} <br><br>
+        ${message}
+        ${ytLink}
+    `;
+    
+    addChat(resultText, 'bot');
+
+    buttonPanel.innerHTML = `<button class="option-btn" onclick="location.reload()">Restart App</button>`;
+}
+
+    
 
     // Initial call to show Class buttons
     createButtons(Object.keys(syllabusData), 'class');
